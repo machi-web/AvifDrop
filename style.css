@@ -509,6 +509,17 @@ body {
   color: var(--text-dim);
 }
 
+.version {
+  margin-left: 0.5rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  background: var(--border);
+  border: 1px solid var(--border-hover);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ===== Utility ===== */
 .hidden { display: none !important; }
 
