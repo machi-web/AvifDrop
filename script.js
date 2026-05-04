@@ -153,12 +153,31 @@ function isHeic(file) {
   return file.type === 'image/heic' || file.type === 'image/heif' || /\.(heic|heif)$/i.test(file.name);
 }
 
+async function decodeHeic(file) {
+  // Safari 16.4+ can load HEIC natively — try that first (no WASM needed)
+  const nativeOk = await new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload  = () => { URL.revokeObjectURL(url); resolve(true); };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(false); };
+    img.src = url;
+  });
+  if (nativeOk) return file;
+
+  // Fallback: heic2any (Chrome / Firefox 向け)
+  try {
+    const result = await heic2any({ blob: file, toType: 'image/png', quality: 1 });
+    return Array.isArray(result) ? result[0] : result;
+  } catch {
+    throw new Error('HEIC の変換に失敗しました。Safari 最新版または Chrome で別の HEIC ファイルをお試しください。');
+  }
+}
+
 async function convertToAvif(file, quality) {
   let source = file;
 
   if (isHeic(file)) {
-    const result = await heic2any({ blob: file, toType: 'image/png', quality: 1 });
-    source = Array.isArray(result) ? result[0] : result;
+    source = await decodeHeic(file);
   }
 
   const img = await loadImage(source);
