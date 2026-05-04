@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AvifDrop — 画像をAVIFに変換</title>
+  <meta name="description" content="PNG・JPEG・WebP をドラッグ&ドロップで AVIF に変換。ブラウザ内完結、サーバー不要。">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+
+    <header class="header">
+      <div class="logo">
+        <svg class="logo-mark" viewBox="0 0 32 32" fill="none">
+          <rect x="2" y="2" width="28" height="28" rx="7" fill="url(#g)"/>
+          <path d="M9 22 L16 10 L23 22" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M11.5 18 H20.5" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          <defs>
+            <linearGradient id="g" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#6366f1"/>
+              <stop offset="1" stop-color="#8b5cf6"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <h1>AvifDrop</h1>
+      </div>
+      <p class="tagline">PNG・JPEG・WebP をドラッグ&ドロップで AVIF に変換</p>
+    </header>
+
+    <div id="browser-warning" class="browser-warning hidden">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <span>AVIF エンコードに対応していません。<strong>Chrome 94以降</strong> または <strong>Safari 16.4以降</strong> をお使いください。</span>
+    </div>
+
+    <!-- Settings -->
+    <section class="settings-panel">
+      <div class="setting-group">
+        <div class="setting-label">
+          <span>品質</span>
+          <span id="quality-badge" class="quality-badge">80</span>
+        </div>
+        <input
+          type="range"
+          id="quality-slider"
+          class="quality-slider"
+          min="1" max="100" value="80"
+          aria-label="変換品質 (1〜100)"
+        >
+        <div class="slider-labels">
+          <span>低品質・小サイズ</span>
+          <span>高品質・大サイズ</span>
+        </div>
+      </div>
+
+      <div class="setting-group setting-group--side">
+        <label class="toggle-label">
+          <input type="checkbox" id="lossless-toggle" class="toggle-input">
+          <span class="toggle-track">
+            <span class="toggle-thumb"></span>
+          </span>
+          <span class="toggle-text">ロスレス</span>
+        </label>
+        <p class="setting-note">オンにすると品質スライダーは無効になります</p>
+      </div>
+    </section>
+
+    <!-- Drop Zone -->
+    <div
+      id="drop-zone"
+      class="drop-zone"
+      role="button"
+      tabindex="0"
+      aria-label="画像ファイルをドロップ、またはクリックして選択"
+    >
+      <div class="drop-zone-content">
+        <div class="drop-icon">
+          <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 16 12 12 8 16"/>
+            <line x1="12" y1="12" x2="12" y2="21"/>
+            <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+          </svg>
+        </div>
+        <p class="drop-title">ここにファイルをドロップ</p>
+        <p class="drop-or">または</p>
+        <button class="btn btn--primary" id="pick-btn" type="button">ファイルを選択</button>
+        <p class="drop-formats">PNG・JPEG・WebP（複数可）</p>
+      </div>
+      <input
+        type="file"
+        id="file-input"
+        accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
+        multiple
+        hidden
+        aria-hidden="true"
+      >
+    </div>
+
+    <!-- Results -->
+    <section id="results-section" class="results-section hidden">
+      <div class="results-header">
+        <div class="results-meta">
+          <h2 class="results-title">変換結果</h2>
+          <div id="summary" class="summary"></div>
+        </div>
+        <div class="results-actions">
+          <button id="download-all-btn" class="btn btn--secondary" type="button">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            まとめてDL
+          </button>
+          <button id="clear-btn" class="btn btn--ghost" type="button">クリア</button>
+        </div>
+      </div>
+
+      <div id="file-grid" class="file-grid"></div>
+    </section>
+
+    <footer class="footer">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+      変換はすべてブラウザ内で完結 — ファイルはサーバーに送信されません
+    </footer>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
