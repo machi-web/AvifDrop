@@ -1,4 +1,5 @@
 /* AvifDrop — client-side PNG/JPEG/WebP → AVIF converter */
+import encode from 'https://esm.sh/@jsquash/avif/encode';
 
 const ACCEPTED_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/heic', 'image/heif']);
 
@@ -34,17 +35,7 @@ const el = {
 })();
 
 async function detectAvifSupport() {
-  try {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1; canvas.height = 1;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, 1, 1);
-    const blob = await toBlob(canvas, 'image/avif', 0.5);
-    return blob !== null && blob.size > 0;
-  } catch {
-    return false;
-  }
+  return typeof WebAssembly !== 'undefined';
 }
 
 // ── Listeners ─────────────────────────────────────────────────────────────────
@@ -226,9 +217,13 @@ async function convertToAvif(file, quality) {
   const canvas = document.createElement('canvas');
   canvas.width  = img.naturalWidth;
   canvas.height = img.naturalHeight;
-  canvas.getContext('2d').drawImage(img, 0, 0);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0);
 
-  const blob = await toBlob(canvas, 'image/avif', quality);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const q = Math.round(quality * 100); // quality is 0.0–1.0; @jsquash/avif expects 0–100
+  const buffer = await encode(imageData, { quality: q });
+  const blob = new Blob([buffer], { type: 'image/avif' });
   if (!blob || blob.size === 0) throw new Error('変換に失敗しました');
   return blob;
 }

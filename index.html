@@ -33,7 +33,7 @@
         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
         <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
       </svg>
-      <span>AVIF エンコードに対応していません。<strong>Chrome 94以降</strong> または <strong>Safari 16.4以降</strong> をお使いください。</span>
+      <span>WebAssembly に対応していないブラウザです。<strong>Chrome・Firefox・Safari</strong> の最新版をお使いください。</span>
     </div>
 
     <!-- Settings -->
@@ -137,6 +137,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/libheif-js@1.17.1/libheif-wasm/libheif-bundle.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="script.js"></script>
+  <script type="module" src="script.js"></script>
 </body>
 </html>
