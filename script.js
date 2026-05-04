@@ -154,7 +154,7 @@ function isHeic(file) {
 }
 
 async function decodeHeic(file) {
-  // Safari 16.4+ can load HEIC natively — try that first (no WASM needed)
+  // Safari 16.4+ can decode HEIC natively — try that first (no WASM needed)
   const nativeOk = await new Promise(resolve => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -164,13 +164,46 @@ async function decodeHeic(file) {
   });
   if (nativeOk) return file;
 
-  // Fallback: heic2any (Chrome / Firefox 向け)
-  try {
-    const result = await heic2any({ blob: file, toType: 'image/png', quality: 1 });
-    return Array.isArray(result) ? result[0] : result;
-  } catch {
-    throw new Error('HEIC の変換に失敗しました。Safari 最新版または Chrome で別の HEIC ファイルをお試しください。');
+  // Fallback: libheif-js WASM decoder (Chrome / Firefox 向け)
+  if (typeof libheif === 'undefined') {
+    throw new Error('HEIC デコーダーが読み込まれていません。ページを再読み込みしてください。');
   }
+
+  const buffer = await file.arrayBuffer();
+  const uint8 = new Uint8Array(buffer);
+
+  return new Promise((resolve, reject) => {
+    try {
+      const decoder = new libheif.HeifDecoder();
+      const images = decoder.decode(uint8);
+
+      if (!images || images.length === 0) {
+        reject(new Error('HEIC ファイルを解析できませんでした'));
+        return;
+      }
+
+      const image = images[0];
+      const width  = image.get_width();
+      const height = image.get_height();
+
+      const canvas = document.createElement('canvas');
+      canvas.width  = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      const imageData = ctx.createImageData(width, height);
+
+      image.display(imageData, displayData => {
+        if (!displayData) { reject(new Error('HEIC の描画に失敗しました')); return; }
+        ctx.putImageData(displayData, 0, 0);
+        canvas.toBlob(
+          blob => blob ? resolve(blob) : reject(new Error('PNG 変換に失敗しました')),
+          'image/png'
+        );
+      });
+    } catch (e) {
+      reject(new Error(`HEIC の変換に失敗しました: ${e.message}`));
+    }
+  });
 }
 
 async function convertToAvif(file, quality) {
