@@ -498,6 +498,15 @@ body {
 
 .card-dl-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
+/* ===== Footer Note ===== */
+.footer-note {
+  text-align: center;
+  margin-top: 2rem;
+  font-size: 0.775rem;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
 /* ===== Footer ===== */
 .footer {
   display: flex;

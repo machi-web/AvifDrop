@@ -153,6 +153,17 @@ function isHeic(file) {
   return file.type === 'image/heic' || file.type === 'image/heif' || /\.(heic|heif)$/i.test(file.name);
 }
 
+// libheif is a factory function — initialize once and cache
+let _heifApi = null;
+async function getHeifApi() {
+  if (_heifApi) return _heifApi;
+  if (typeof libheif === 'undefined') throw new Error('HEIC デコーダーが読み込まれていません。ページを再読み込みしてください。');
+  const api = libheif();
+  await api.ready;
+  _heifApi = api;
+  return api;
+}
+
 async function decodeHeic(file) {
   // Safari 16.4+ can decode HEIC natively — try that first (no WASM needed)
   const nativeOk = await new Promise(resolve => {
@@ -165,24 +176,21 @@ async function decodeHeic(file) {
   if (nativeOk) return file;
 
   // Fallback: libheif-js WASM decoder (Chrome / Firefox 向け)
-  if (typeof libheif === 'undefined') {
-    throw new Error('HEIC デコーダーが読み込まれていません。ページを再読み込みしてください。');
-  }
-
+  const heif = await getHeifApi();
   const buffer = await file.arrayBuffer();
-  const uint8 = new Uint8Array(buffer);
+  const uint8  = new Uint8Array(buffer);
 
   return new Promise((resolve, reject) => {
     try {
-      const decoder = new libheif.HeifDecoder();
-      const images = decoder.decode(uint8);
+      const decoder = new heif.HeifDecoder();
+      const images  = decoder.decode(uint8);
 
       if (!images || images.length === 0) {
         reject(new Error('HEIC ファイルを解析できませんでした'));
         return;
       }
 
-      const image = images[0];
+      const image  = images[0];
       const width  = image.get_width();
       const height = image.get_height();
 
@@ -201,7 +209,7 @@ async function decodeHeic(file) {
         );
       });
     } catch (e) {
-      reject(new Error(`HEIC の変換に失敗しました: ${e.message}`));
+      reject(new Error(`HEIC 変換エラー: ${e.message}`));
     }
   });
 }
