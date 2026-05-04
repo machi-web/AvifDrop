@@ -1,6 +1,6 @@
 /* AvifDrop — client-side PNG/JPEG/WebP → AVIF converter */
 
-const ACCEPTED_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+const ACCEPTED_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/heic', 'image/heif']);
 
 const state = {
   supported: false,
@@ -105,7 +105,7 @@ function updateSliderFill() {
 
 // ── File handling ─────────────────────────────────────────────────────────────
 function handleFiles(files) {
-  const valid = files.filter(f => ACCEPTED_TYPES.has(f.type));
+  const valid = files.filter(f => ACCEPTED_TYPES.has(f.type) || /\.(heic|heif)$/i.test(f.name));
   if (valid.length === 0) return;
   if (!state.supported) {
     el.browserWarning.classList.remove('hidden');
@@ -149,8 +149,19 @@ async function convertAndRender(file) {
 }
 
 // ── Conversion ────────────────────────────────────────────────────────────────
+function isHeic(file) {
+  return file.type === 'image/heic' || file.type === 'image/heif' || /\.(heic|heif)$/i.test(file.name);
+}
+
 async function convertToAvif(file, quality) {
-  const img = await loadImage(file);
+  let source = file;
+
+  if (isHeic(file)) {
+    const result = await heic2any({ blob: file, toType: 'image/png', quality: 1 });
+    source = Array.isArray(result) ? result[0] : result;
+  }
+
+  const img = await loadImage(source);
 
   const canvas = document.createElement('canvas');
   canvas.width  = img.naturalWidth;

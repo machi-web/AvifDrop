@@ -87,12 +87,12 @@
         <p class="drop-title">ここにファイルをドロップ</p>
         <p class="drop-or">または</p>
         <button class="btn btn--primary" id="pick-btn" type="button">ファイルを選択</button>
-        <p class="drop-formats">PNG・JPEG・WebP（複数可）</p>
+        <p class="drop-formats">PNG・JPEG・WebP・HEIC（複数可）</p>
       </div>
       <input
         type="file"
         id="file-input"
-        accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
+        accept="image/png,image/jpeg,image/webp,image/heic,image/heif,.png,.jpg,.jpeg,.webp,.heic,.heif"
         multiple
         hidden
         aria-hidden="true"
@@ -132,6 +132,7 @@
 
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="script.js"></script>
 </body>
