@@ -144,19 +144,8 @@ function isHeic(file) {
   return file.type === 'image/heic' || file.type === 'image/heif' || /\.(heic|heif)$/i.test(file.name);
 }
 
-// libheif is a factory function — initialize once and cache
-let _heifApi = null;
-async function getHeifApi() {
-  if (_heifApi) return _heifApi;
-  if (typeof libheif === 'undefined') throw new Error('HEIC デコーダーが読み込まれていません。ページを再読み込みしてください。');
-  const api = libheif();
-  await api.ready;
-  _heifApi = api;
-  return api;
-}
-
-async function decodeHeic(file) {
-  // Safari 16.4+ can decode HEIC natively — try that first (no WASM needed)
+async function heicToImageData(file) {
+  // Try browser-native decode first (Safari 16.4+)
   const nativeOk = await new Promise(resolve => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -164,63 +153,31 @@ async function decodeHeic(file) {
     img.onerror = () => { URL.revokeObjectURL(url); resolve(false); };
     img.src = url;
   });
-  if (nativeOk) return file;
 
-  // Fallback: libheif-js WASM decoder (Chrome / Firefox 向け)
-  const heif = await getHeifApi();
-  const buffer = await file.arrayBuffer();
-  const uint8  = new Uint8Array(buffer);
+  const source = nativeOk
+    ? file
+    : await heic2any({ blob: file, toType: 'image/png' }).then(r => Array.isArray(r) ? r[0] : r);
 
-  return new Promise((resolve, reject) => {
-    try {
-      const decoder = new heif.HeifDecoder();
-      const images  = decoder.decode(uint8);
-
-      if (!images || images.length === 0) {
-        reject(new Error('HEIC ファイルを解析できませんでした'));
-        return;
-      }
-
-      const image  = images[0];
-      const width  = image.get_width();
-      const height = image.get_height();
-
-      const canvas = document.createElement('canvas');
-      canvas.width  = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      const imageData = ctx.createImageData(width, height);
-
-      image.display(imageData, displayData => {
-        if (!displayData) { reject(new Error('HEIC の描画に失敗しました')); return; }
-        ctx.putImageData(displayData, 0, 0);
-        canvas.toBlob(
-          blob => blob ? resolve(blob) : reject(new Error('PNG 変換に失敗しました')),
-          'image/png'
-        );
-      });
-    } catch (e) {
-      reject(new Error(`HEIC 変換エラー: ${e.message}`));
-    }
-  });
+  return imgFileToImageData(source);
 }
 
-async function convertToAvif(file, quality) {
-  let source = file;
-
-  if (isHeic(file)) {
-    source = await decodeHeic(file);
-  }
-
+async function imgFileToImageData(source) {
   const img = await loadImage(source);
-
   const canvas = document.createElement('canvas');
   canvas.width  = img.naturalWidth;
   canvas.height = img.naturalHeight;
   const ctx = canvas.getContext('2d');
   ctx.drawImage(img, 0, 0);
+  return ctx.getImageData(0, 0, canvas.width, canvas.height);
+}
 
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+async function fileToImageData(file) {
+  if (isHeic(file)) return heicToImageData(file);
+  return imgFileToImageData(file);
+}
+
+async function convertToAvif(file, quality) {
+  const imageData = await fileToImageData(file);
   const q = Math.round(quality * 100); // quality is 0.0–1.0; @jsquash/avif expects 0–100
   const buffer = await encode(imageData, { quality: q });
   const blob = new Blob([buffer], { type: 'image/avif' });
