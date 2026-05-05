@@ -1,5 +1,6 @@
 /* AvifDrop — client-side PNG/JPEG/WebP → AVIF converter */
 import encode from 'https://esm.sh/@jsquash/avif/encode';
+import { heicTo } from 'https://esm.sh/heic-to';
 
 const ACCEPTED_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/heic', 'image/heif']);
 
@@ -156,7 +157,7 @@ async function heicToImageData(file) {
 
   const source = nativeOk
     ? file
-    : await heic2any({ blob: file, toType: 'image/png' }).then(r => Array.isArray(r) ? r[0] : r);
+    : await heicTo({ blob: file, type: 'image/png' });
 
   return imgFileToImageData(source);
 }
